@@ -1,10 +1,15 @@
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 use serde_json::{self, json, Value};
+
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
 
 fn main() {
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     let mut buffer = String::new();
+    let mut msg_id = 1;
 
     loop {
         buffer.clear();
@@ -22,11 +27,23 @@ fn main() {
                 object["dest"] = src;
 
                 // Modify the "body" object to include the desired fields
-                let body = object["body"].as_object_mut().unwrap();
-                body.insert("type".to_string(), json!("echo_ok"));
-                body.insert("in_reply_to".to_string(), body["msg_id"].clone());
+                let msg_type: String = object["body"]["type"].as_str().unwrap().to_string();
+                match msg_type.as_str() {
+                    "init" => object["body"].as_object_mut().unwrap().insert("type".to_string(), json!("init_ok")),
+                    "echo" => object["body"].as_object_mut().unwrap().insert("type".to_string(), json!("echo_ok")),
+                     _ => {
+                         println!("No match! Type: {}", msg_type.as_str());
+                         None
+                     }
+                };
+                object["body"]["in_reply_to"] = json!(object["body"]["msg_id"]);
+                object["body"]["msg_id"] = json!(msg_id);
 
-                println!("{}", serde_json::to_string_pretty(&object).unwrap());
+                msg_id += 1;
+
+                eprintln!("{}", serde_json::to_string(&object).unwrap());
+                writeln!(std::io::stdout(), "{}", serde_json::to_string(&object).unwrap()).unwrap();
+                std::io::stdout().flush().unwrap();
             }
             Err(error) => {
                 eprintln!("Error reading from stdin: {}", error);
