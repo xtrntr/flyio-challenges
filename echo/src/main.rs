@@ -1,11 +1,13 @@
 use std::io::{self, BufRead, Write};
 use serde_json::{self, json, Value};
+use uuid::Uuid;
 
 fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
 }
 
 fn main() {
+    let uuid = Uuid::new_v4();
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     let mut buffer = String::new();
@@ -30,6 +32,12 @@ fn main() {
                 let msg_type: String = object["body"]["type"].as_str().unwrap().to_string();
                 match msg_type.as_str() {
                     "init" => object["body"].as_object_mut().unwrap().insert("type".to_string(), json!("init_ok")),
+                    "generate" => {
+                        object["body"].as_object_mut().unwrap().insert("type".to_string(), json!("generate_ok"));
+                        let uuid = Uuid::new_v4();
+                        object["body"]["id"] = json!(uuid.to_string());
+                        None
+                    }
                     "echo" => object["body"].as_object_mut().unwrap().insert("type".to_string(), json!("echo_ok")),
                      _ => {
                          println!("No match! Type: {}", msg_type.as_str());
